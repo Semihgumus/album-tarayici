@@ -1062,7 +1062,7 @@ function renderCard(it) {
     el = document.createElement("button");
     el.type = "button"; el.className = "card"; el.dataset.id = it.id;
     el.addEventListener("click", () => { if (it.status === "done") openEditor(it); });
-    $("#grid").appendChild(el);
+    $("#grid").prepend(el); // en yeni en üstte
   }
   el.innerHTML = cardHTML(it);
   el.setAttribute("aria-label", "Fotoğraf " + pad3(state.items.indexOf(it) + 1) + " düzenle");
@@ -1111,6 +1111,7 @@ async function addFiles(files) {
   for (const f of files) state.items.push({ id: ++uid, name: f.name, file: f, status: "wait", st: Object.assign({}, CONFIG.defaults), quad: null, kind: null });
   $("#tips").open = false;
   renderGrid();
+  $("#grid").scrollIntoView({ behavior: "smooth", block: "start" });
   processQueue();
 }
 async function processQueue() {
