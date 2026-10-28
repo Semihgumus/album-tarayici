@@ -1,0 +1,1426 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Albüm">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#E9ECE8">
+<title>Albüm Tarayıcı</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single archive column — album strip of contact-sheet cards, full-screen darkroom editor sheet */
+:root {
+  --bg: #E9ECE8;
+  --surface: #F7F8F5;
+  --ink: #18201C;
+  --muted: #5B6760;
+  --line: #CBD3CD;
+  --accent: #1D6B57;
+  --accent-ink: #FFFFFF;
+  --warn: #9A5508;
+  --warn-bg: #F6E7D2;
+  --stage: #1A1E1C;
+  --f-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --f-body: "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111513; --surface: #1A1F1C; --ink: #E4E9E5; --muted: #95A29B; --line: #2C3531;
+    --accent: #5CC3A4; --accent-ink: #0A1511; --warn: #E8A853; --warn-bg: #3A2C18; --stage: #0B0D0C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111513; --surface: #1A1F1C; --ink: #E4E9E5; --muted: #95A29B; --line: #2C3531;
+  --accent: #5CC3A4; --accent-ink: #0A1511; --warn: #E8A853; --warn-bg: #3A2C18; --stage: #0B0D0C;
+  color-scheme: dark;
+}
+html, body { margin: 0; }
+:root { padding-top: env(safe-area-inset-top, 0px); }
+* { box-sizing: border-box; }
+.sheet { position: fixed; inset: 0; z-index: 35; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; }
+.sheet .pane { width: 100%; max-width: 520px; background: var(--surface); color: var(--ink); border-radius: 16px 16px 0 0; display: grid; gap: 12px;
+  padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.sheet h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 1.7rem; line-height: 1.1; }
+.sheet p { margin: 0; color: var(--muted); font-size: 14px; }
+.sheet .grp { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.sheet .btn { justify-content: center; }
+.sheet .btn.done { opacity: .55; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 120px;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: grid; gap: 6px; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(2.2rem, 7vw, 3.2rem); line-height: 1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 em { color: var(--accent); }
+.lede { margin: 0; color: var(--muted); max-width: 60ch; }
+.eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn {
+  appearance: none; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  font: 500 15px/1 var(--f-body); padding: 12px 16px; border-radius: 10px; cursor: pointer; min-height: 44px;
+  display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+}
+.btn:hover { border-color: var(--muted); }
+.btn:focus-visible, input:focus-visible, .card:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn svg { width: 18px; height: 18px; flex: none; }
+.filebtn { position: relative; overflow: hidden; }
+.filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 100px; }
+
+details.tips { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+details.tips summary { cursor: pointer; padding: 12px 16px; font-weight: 500; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+details.tips summary::-webkit-details-marker { display: none; }
+details.tips summary::after { content: "+"; font-family: var(--f-mono); color: var(--muted); }
+details.tips[open] summary::after { content: "−"; }
+details.tips ol { margin: 0; padding: 0 16px 16px 36px; display: grid; gap: 6px; max-width: 70ch; color: var(--muted); }
+details.tips b { color: var(--ink); font-weight: 500; }
+
+.status { display: flex; align-items: center; gap: 12px; font-family: var(--f-mono); font-size: 12px; color: var(--muted); min-height: 20px; flex-wrap: wrap; }
+.bar { flex: 1 1 160px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+@media (min-width: 640px) { .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; } }
+.card {
+  appearance: none; border: 0; background: none; padding: 0; text-align: left; color: inherit; font: inherit; cursor: pointer;
+  display: grid; gap: 8px; min-width: 0;
+}
+.mount {
+  position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 10px;
+  aspect-ratio: 4 / 5; display: grid; place-items: center; max-width: 100%;
+}
+.mount img { max-width: 100%; max-height: 100%; display: block; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+/* photo-album corner mounts */
+.mount::before, .mount::after { content: ""; position: absolute; width: 14px; height: 14px; border: 1px solid var(--line); background: var(--bg); }
+.mount::before { top: 6px; left: 6px; clip-path: polygon(0 0, 100% 0, 0 100%); }
+.mount::after { bottom: 6px; right: 6px; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+.mount .ph { font-family: var(--f-mono); font-size: 12px; color: var(--muted); text-align: center; padding: 8px; }
+.mount .spin { width: 22px; height: 22px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: sp 0.8s linear infinite; margin: 0 auto 8px; }
+@keyframes sp { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .mount .spin { animation-duration: 3s; } }
+.cap { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cap .no { color: var(--ink); font-weight: 500; }
+.chip { font-family: var(--f-mono); font-size: 11px; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chip.warn { color: var(--warn); background: var(--warn-bg); border-color: transparent; }
+.chip.sample { color: var(--accent); border-color: var(--accent); }
+
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--surface); border-top: 1px solid var(--line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
+.dock .in { max-width: 980px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.prefix { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.prefix input { width: 110px; font: 500 15px var(--f-mono); padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.note { font-size: 12px; color: var(--muted); margin: 0; }
+.privacy { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; max-width: 70ch; }
+
+/* editor */
+.editor {
+  position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.ed-top { display: flex; align-items: center; gap: 8px; justify-content: space-between; padding: 8px max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); }
+.ed-top .ttl { font-family: var(--f-mono); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+@media (min-width: 860px) { .ed-body { flex-direction: row; } .ed-panel { width: 340px; border-left: 1px solid var(--line); border-top: 0 !important; max-height: none !important; } }
+.stagewrap { position: relative; flex: 1; min-height: 240px; background: var(--stage); }
+#stage { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+#loupe { position: absolute; top: 12px; width: 120px; height: 120px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 4px 16px rgba(0,0,0,.5); pointer-events: none; background: #000; }
+.hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); background: rgba(0,0,0,.6); color: #fff; font-size: 12px; padding: 5px 10px; border-radius: 20px; pointer-events: none; white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; }
+.ed-panel { border-top: 1px solid var(--line); background: var(--surface); overflow-y: auto; max-height: 46vh; padding: 14px max(16px, env(safe-area-inset-right, 0px)) 18px max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 14px; align-content: start; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { appearance: none; border: 0; background: none; color: var(--muted); font: 500 13px var(--f-body); padding: 9px 4px; border-radius: 7px; cursor: pointer; min-height: 38px; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+.lbl { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.lbl output { font-family: var(--f-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.row .btn { flex: 1 1 auto; justify-content: center; padding: 10px 12px; font-size: 14px; }
+.check { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.danger { color: var(--warn); }
+
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); z-index: 40; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+.busy { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.45); display: grid; place-items: center; padding: 16px; }
+.busy div { background: var(--surface); color: var(--ink); padding: 18px 22px; border-radius: 12px; font-family: var(--f-mono); font-size: 14px; text-align: center; }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Fiziksel fotoğraftan dijital arşive</span>
+    <h1>Albüm <em>Tarayıcı</em></h1>
+    <p class="lede">Fotoğrafları koyu bir zemin üzerinde çek ve buraya ekle. Sayfa her birinin kenarını bulur, masayı keser, eğikliği düzeltir ve sararmış ya da solmuş tonu toparlar.</p>
+  </header>
+
+  <div class="actions">
+    <label class="btn primary filebtn" for="pick">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      Fotoğraf ekle
+      <input id="pick" type="file" accept="image/*" multiple>
+    </label>
+    <span class="note" id="countNote"></span>
+  </div>
+
+  <details class="tips" id="tips">
+    <summary>Daha iyi sonuç için çekim ipuçları</summary>
+    <ol>
+      <li><b>Koyu ve düz bir zemin kullan.</b> Siyah karton ya da koyu bir masa, kenarın kolay bulunmasını sağlar.</li>
+      <li><b>Flaşı kapat.</b> Parlak fotoğraf kâğıdında flaş beyaz bir leke bırakır.</li>
+      <li><b>Gün ışığında ama gölgesiz çek.</b> Pencere kenarı idealdir, telefonunun gölgesi fotoğrafa düşmesin.</li>
+      <li><b>Telefonu fotoğrafa paralel tut</b> ve fotoğrafın çevresinde biraz boşluk bırak.</li>
+      <li><b>Kenar yanlış bulunursa</b> karta dokun, köşeleri parmağınla sürükle.</li>
+    </ol>
+  </details>
+
+  <div class="status" id="status" aria-live="polite"></div>
+
+  <div class="grid" id="grid"></div>
+
+  <p class="privacy">Fotoğraflar telefonundan hiçbir yere gönderilmez. Bütün işlem bu sayfanın içinde, cihazında yapılır.</p>
+</div>
+
+<div class="dock">
+  <div class="in">
+    <label class="prefix" for="prefix">Dosya adı <input id="prefix" type="text" value="dede" autocomplete="off" spellcheck="false"></label>
+    <button class="btn primary" id="zipBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+      <span id="zipLabel">Tümünü kaydet</span>
+    </button>
+  </div>
+</div>
+
+<div class="editor" id="editor" hidden>
+  <div class="ed-top">
+    <button class="btn ghost" id="edBack" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+      Bitti
+    </button>
+    <span class="ttl" id="edTitle"></span>
+    <button class="btn ghost danger" id="edDel" type="button">Sil</button>
+  </div>
+  <div class="ed-body">
+    <div class="stagewrap" id="stagewrap">
+      <canvas id="stage"></canvas>
+      <canvas id="loupe" width="240" height="240" hidden></canvas>
+      <div class="hint" id="hint"></div>
+    </div>
+    <div class="ed-panel">
+      <div class="seg" role="group" aria-label="Görünüm">
+        <button type="button" id="vCorners" aria-pressed="false">Köşeler</button>
+        <button type="button" id="vResult" aria-pressed="true">Sonuç</button>
+      </div>
+      <div>
+        <div class="lbl"><span>Renk modu</span><output id="kindOut"></output></div>
+        <div class="seg" role="group" aria-label="Renk modu" id="modeSeg">
+          <button type="button" data-mode="auto">Otomatik</button>
+          <button type="button" data-mode="bw">Siyah-beyaz</button>
+          <button type="button" data-mode="color">Renkli</button>
+          <button type="button" data-mode="orig">Orijinal</button>
+        </div>
+      </div>
+      <div>
+        <div class="lbl"><label for="sStr">İyileştirme</label><output id="oStr">70</output></div>
+        <input type="range" id="sStr" min="0" max="100" step="1" value="70">
+      </div>
+      <div>
+        <div class="lbl"><label for="sBri">Parlaklık</label><output id="oBri">0</output></div>
+        <input type="range" id="sBri" min="-50" max="50" step="1" value="0">
+      </div>
+      <div>
+        <div class="lbl"><label for="sCon">Kontrast</label><output id="oCon">0</output></div>
+        <input type="range" id="sCon" min="-50" max="50" step="1" value="0">
+      </div>
+      <label class="check" for="cWarm"><input type="checkbox" id="cWarm"> Sıcak ton (siyah-beyaza hafif sepya)</label>
+      <div class="row">
+        <button class="btn" id="bRot" type="button">Döndür 90°</button>
+        <button class="btn" id="bFlip" type="button">Aynala</button>
+        <button class="btn" id="bReset" type="button">Köşeleri sıfırla</button>
+      </div>
+      <div class="row">
+        <button class="btn" id="bAll" type="button">Ayarları hepsine uygula</button>
+        <button class="btn primary" id="bSave" type="button">Bu fotoğrafı kaydet</button>
+      </div>
+      <p class="note">Sonuç görünümünde fotoğrafa basılı tutunca orijinali görürsün.</p>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="pane" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+    <h2 id="shTitle">Kaydetmeye hazır</h2>
+    <p id="shText"></p>
+    <div class="grp" id="shGroups"></div>
+    <button class="btn" id="shZip" type="button">ZIP olarak indir</button>
+    <button class="btn ghost" id="shClose" type="button">Kapat</button>
+  </div>
+</div>
+<div class="busy" id="busy" hidden><div id="busyText">Hazırlanıyor…</div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+/* ---------- Ayarlanabilir sabitler ---------- */
+const CONFIG = {
+  previewSize: 1600,      // düzenleme / önizleme kaynağı uzun kenar (px)
+  detectSize: 900,        // kenar bulma çözünürlüğü
+  edgePct: 0.85,          // kenar sayılacak piksel yüzdeliği
+  edgeMin: 14,            // kenar gücü alt sınırı
+  lineMinVotes: 0.10,     // düz çizgi için en az oy (kısa kenarın oranı)
+  maxLines: 60,
+  preTop: 300,            // hızlı elemeden geçen aday sayısı
+  refineTop: 25,          // en iyi bu kadar aday ince ayardan geçer
+  refineRange: 5,         // kenar oturtma arama aralığı (px)
+  minSupport: 0.3,        // kenar puanı alt sınırı
+  supportSlack: 0.04,
+  sureSide: 0.55,         // en zayıf kenar bunun altındaysa uyarı ver
+  maxSource: 4000,        // tam çözünürlükte kaynak üst sınırı (iOS canvas sınırı için)
+  maxOut: 4000,           // çıktı uzun kenar üst sınırı
+  thumbSize: 520,
+  jpegQuality: 0.92,
+  minContrast: 18,        // zemin-fotoğraf renk farkı alt eşiği
+  inset: 0.012,           // bulunan köşeleri merkeze doğru çekme oranı (kenar payı)
+  bwThreshold: 0.07,      // SB/renkli ayrımı (ton oranı sapması)
+  levelsClip: 0.005,      // seviye düzeltmede uçlardan kesilen oran
+  claheBW: 2.0, claheColor: 1.5, claheTiles: 8,
+  sharpen: 0.4,
+  satBoost: 0.10,
+  wbMix: 0.5,
+  defaults: { mode: "auto", strength: 70, bright: 0, contrast: 0, warm: false, rot: 0, flip: false }
+};
+
+/* ---------- Yardımcılar ---------- */
+const $ = s => document.querySelector(s);
+const tick = () => new Promise(r => setTimeout(r, 0));
+const free = c => { if (c && c.width !== undefined) { c.width = 0; c.height = 0; } };
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const pad3 = n => String(n).padStart(3, "0");
+
+async function decodeFile(file) {
+  try { return await createImageBitmap(file, { imageOrientation: "from-image" }); } catch (e) {}
+  try { return await createImageBitmap(file); } catch (e) {}
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.src = url;
+  try { await img.decode(); } catch (e) { URL.revokeObjectURL(url); throw new Error("Bu dosya açılamadı"); }
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  return img;
+}
+function dims(el) { return [el.naturalWidth || el.width, el.naturalHeight || el.height]; }
+function fitCanvas(el, max) {
+  const [w, h] = dims(el);
+  const s = Math.min(1, max / Math.max(w, h));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s));
+  const x = c.getContext("2d");
+  x.imageSmoothingQuality = "high";
+  x.drawImage(el, 0, 0, c.width, c.height);
+  return c;
+}
+function canvasBlob(c, q) {
+  return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error("Görüntü kodlanamadı")), "image/jpeg", q));
+}
+async function blobCanvas(blob, max) {
+  const bm = await decodeFile(blob);
+  const c = fitCanvas(bm, max || 99999);
+  if (bm.close) bm.close();
+  return c;
+}
+function getData(c) { return c.getContext("2d").getImageData(0, 0, c.width, c.height); }
+
+/* ---------- Geometri ---------- */
+function homography(src, dst) { // src[i] -> dst[i]
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = src[i], [u, v] = dst[i];
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u);
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v);
+  }
+  const n = 8;
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+    [A[c], A[p]] = [A[p], A[c]]; [b[c], b[p]] = [b[p], b[c]];
+    const piv = A[c][c] || 1e-12;
+    for (let r = 0; r < n; r++) {
+      if (r === c) continue;
+      const f = A[r][c] / piv;
+      if (!f) continue;
+      for (let k = c; k < n; k++) A[r][k] -= f * A[c][k];
+      b[r] -= f * b[c];
+    }
+  }
+  const h = b.map((v, i) => v / (A[i][i] || 1e-12));
+  h.push(1);
+  return h;
+}
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+function quadSize(q) {
+  return { w: Math.max(dist(q[0], q[1]), dist(q[3], q[2])), h: Math.max(dist(q[0], q[3]), dist(q[1], q[2])) };
+}
+function polyArea(p) {
+  let a = 0;
+  for (let i = 0; i < p.length; i++) { const j = (i + 1) % p.length; a += p[i][0] * p[j][1] - p[j][0] * p[i][1]; }
+  return Math.abs(a) / 2;
+}
+function orderQuad(q) {
+  const cx = q.reduce((s, p) => s + p[0], 0) / 4, cy = q.reduce((s, p) => s + p[1], 0) / 4;
+  const s = q.slice().sort((a, b) => Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx));
+  let k = 0, m = Infinity;
+  s.forEach((p, i) => { if (p[0] + p[1] < m) { m = p[0] + p[1]; k = i; } });
+  return s.slice(k).concat(s.slice(0, k));
+}
+function convexHull(pts) {
+  pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const p of pts) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  up.pop(); lo.pop();
+  return lo.concat(up);
+}
+function bestQuad(h) {
+  let best = null, bestA = -1;
+  for (let th = 0; th < 90; th += 3) {
+    const q = [];
+    for (let k = 0; k < 4; k++) {
+      const a = (th + 45 + 90 * k) * Math.PI / 180, cx = Math.cos(a), cy = Math.sin(a);
+      let m = -Infinity, mp = null;
+      for (const p of h) { const v = p[0] * cx + p[1] * cy; if (v > m) { m = v; mp = p; } }
+      q.push(mp);
+    }
+    const A = polyArea(q);
+    if (A > bestA) { bestA = A; best = q; }
+  }
+  return orderQuad(best.map(p => p.slice()));
+}
+
+/* ---------- Görüntü işleme temelleri ---------- */
+function boxBlur(a, W, H, r) {
+  const t = new Float32Array(a.length), o = new Float32Array(a.length), ps = new Float64Array(Math.max(W, H) + 1);
+  for (let y = 0; y < H; y++) {
+    const b = y * W; ps[0] = 0;
+    for (let x = 0; x < W; x++) ps[x + 1] = ps[x] + a[b + x];
+    for (let x = 0; x < W; x++) { const s = Math.max(0, x - r), e = Math.min(W, x + r + 1); t[b + x] = (ps[e] - ps[s]) / (e - s); }
+  }
+  for (let x = 0; x < W; x++) {
+    ps[0] = 0;
+    for (let y = 0; y < H; y++) ps[y + 1] = ps[y] + t[y * W + x];
+    for (let y = 0; y < H; y++) { const s = Math.max(0, y - r), e = Math.min(H, y + r + 1); o[y * W + x] = (ps[e] - ps[s]) / (e - s); }
+  }
+  return o;
+}
+function morph(m, W, H, r, dil) {
+  const t = new Uint8Array(m.length), o = new Uint8Array(m.length), ps = new Int32Array(Math.max(W, H) + 1);
+  for (let y = 0; y < H; y++) {
+    const b = y * W; ps[0] = 0;
+    for (let x = 0; x < W; x++) ps[x + 1] = ps[x] + m[b + x];
+    for (let x = 0; x < W; x++) { const s = Math.max(0, x - r), e = Math.min(W, x + r + 1), v = ps[e] - ps[s]; t[b + x] = dil ? (v > 0 ? 1 : 0) : (v === e - s ? 1 : 0); }
+  }
+  for (let x = 0; x < W; x++) {
+    ps[0] = 0;
+    for (let y = 0; y < H; y++) ps[y + 1] = ps[y] + t[y * W + x];
+    for (let y = 0; y < H; y++) { const s = Math.max(0, y - r), e = Math.min(H, y + r + 1), v = ps[e] - ps[s]; o[y * W + x] = dil ? (v > 0 ? 1 : 0) : (v === e - s ? 1 : 0); }
+  }
+  return o;
+}
+function otsu(h, n) {
+  let sum = 0; for (let i = 0; i < 256; i++) sum += i * h[i];
+  let sB = 0, wB = 0, best = 0, t = 0;
+  for (let i = 0; i < 256; i++) {
+    wB += h[i]; if (!wB) continue;
+    const wF = n - wB; if (!wF) break;
+    sB += i * h[i];
+    const mB = sB / wB, mF = (sum - sB) / wF, v = wB * wF * (mB - mF) * (mB - mF);
+    if (v > best) { best = v; t = i; }
+  }
+  return t;
+}
+
+/* ---------- Kenar bulma ---------- */
+/* İki aday üretilir: (1) zemin rengine göre maske, (2) düz kenar çizgileri (Hough).
+   Her aday, kenarları boyunca gerçekten kenar olup olmadığına göre puanlanır;
+   en iyisi seçilir ve her kenar en güçlü çizgiye oturtulur. */
+const FALLBACK = () => ({ quad: [[0.03, 0.03], [0.97, 0.03], [0.97, 0.97], [0.03, 0.97]], found: false });
+
+function gradients(d, W, H) {
+  const N = W * H, ch = [new Float32Array(N), new Float32Array(N), new Float32Array(N)];
+  for (let i = 0, j = 0; i < N; i++, j += 4) { ch[0][i] = d[j]; ch[1][i] = d[j + 1]; ch[2][i] = d[j + 2]; }
+  for (let c = 0; c < 3; c++) ch[c] = boxBlur(boxBlur(ch[c], W, H, 1), W, H, 1);
+  const mag = new Float32Array(N), gx = new Float32Array(N), gy = new Float32Array(N);
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+    const i = y * W + x; let bm = 0, bx = 0, by = 0;
+    for (let c = 0; c < 3; c++) {
+      const a = ch[c];
+      const sx = (a[i - W + 1] + 2 * a[i + 1] + a[i + W + 1]) - (a[i - W - 1] + 2 * a[i - 1] + a[i + W - 1]);
+      const sy = (a[i + W - 1] + 2 * a[i + W] + a[i + W + 1]) - (a[i - W - 1] + 2 * a[i - W] + a[i - W + 1]);
+      const m = sx * sx + sy * sy;
+      if (m > bm) { bm = m; bx = sx; by = sy; }
+    }
+    mag[i] = Math.sqrt(bm); gx[i] = bx; gy[i] = by;
+  }
+  return { mag, gx, gy };
+}
+function edgeMap(g, W, H) {
+  const { mag, gx, gy } = g, N = W * H, samp = [];
+  const step = Math.max(1, Math.floor(N / 30000));
+  for (let i = 0; i < N; i += step) samp.push(mag[i]);
+  samp.sort((a, b) => a - b);
+  const thr = Math.max(CONFIG.edgeMin, samp[Math.floor(samp.length * CONFIG.edgePct)]);
+  const e = new Uint8Array(N);
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+    const i = y * W + x, m = mag[i];
+    if (m < thr) continue;
+    const ax = Math.abs(gx[i]), ay = Math.abs(gy[i]);
+    let n1, n2;
+    if (ax > 2.414 * ay) { n1 = i - 1; n2 = i + 1; }
+    else if (ay > 2.414 * ax) { n1 = i - W; n2 = i + W; }
+    else if (gx[i] * gy[i] > 0) { n1 = i - W - 1; n2 = i + W + 1; }
+    else { n1 = i - W + 1; n2 = i + W - 1; }
+    if (m >= mag[n1] && m >= mag[n2]) e[i] = 1;
+  }
+  return e;
+}
+function houghLines(e, g, W, H) {
+  const T = 180, diag = Math.ceil(Math.hypot(W, H)), R = 2 * diag + 1;
+  const cs = new Float32Array(T), sn = new Float32Array(T);
+  for (let t = 0; t < T; t++) { cs[t] = Math.cos(t * Math.PI / 180); sn[t] = Math.sin(t * Math.PI / 180); }
+  const acc = new Uint16Array(T * R);
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+    const i = y * W + x;
+    if (!e[i]) continue;
+    let th = Math.round(Math.atan2(g.gy[i], g.gx[i]) * 180 / Math.PI);
+    if (th < 0) th += 180;
+    for (let k = -8; k <= 8; k++) {
+      const t = (th + k + 180) % 180, r = Math.round(x * cs[t] + y * sn[t]) + diag;
+      if (acc[t * R + r] < 65535) acc[t * R + r]++;
+    }
+  }
+  const minV = Math.round(Math.min(W, H) * CONFIG.lineMinVotes), peaks = [];
+  for (let t = 0; t < T; t++) for (let r = 1; r < R - 1; r++) {
+    const v = acc[t * R + r];
+    if (v < minV) continue;
+    let ok = true;
+    for (let dt = -2; dt <= 2 && ok; dt++) {
+      const tt = (t + dt + T) % T;
+      for (let dr = -4; dr <= 4; dr++) {
+        if (!dt && !dr) continue;
+        const rr = r + dr;
+        if (rr < 0 || rr >= R) continue;
+        const w = acc[tt * R + rr];
+        if (w > v || (w === v && (dt < 0 || (dt === 0 && dr < 0)))) { ok = false; break; }
+      }
+    }
+    if (ok) peaks.push({ t, r: r - diag, v });
+  }
+  peaks.sort((a, b) => b.v - a.v);
+  const lines = [];
+  for (const p of peaks) {
+    if (lines.some(l => angDiff(l.t, p.t) < 4 && Math.abs(lineDist(l, p)) < 12)) continue;
+    lines.push(p);
+    if (lines.length >= CONFIG.maxLines) break;
+  }
+  return lines;
+}
+function angDiff(a, b) { const d = Math.abs(a - b) % 180; return Math.min(d, 180 - d); }
+function lineDist(a, b) { // ~parallel lines: signed offset
+  const flip = Math.abs(a.t - b.t) > 90;
+  return flip ? a.r + b.r : a.r - b.r;
+}
+function intersect(a, b) {
+  const t1 = a.t * Math.PI / 180, t2 = b.t * Math.PI / 180;
+  const c1 = Math.cos(t1), s1 = Math.sin(t1), c2 = Math.cos(t2), s2 = Math.sin(t2);
+  const det = c1 * s2 - s1 * c2;
+  if (Math.abs(det) < 1e-6) return null;
+  return [(a.r * s2 - s1 * b.r) / det, (c1 * b.r - a.r * c2) / det];
+}
+function isConvex(q) {
+  let sign = 0;
+  for (let i = 0; i < 4; i++) {
+    const a = q[i], b = q[(i + 1) % 4], c = q[(i + 2) % 4];
+    const cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+    if (Math.abs(cr) < 1e-9) return false;
+    const s = Math.sign(cr);
+    if (sign && s !== sign) return false;
+    sign = s;
+  }
+  return true;
+}
+function maxFilter(m, W, H, r) {
+  const t = new Float32Array(m.length), o = new Float32Array(m.length);
+  for (let y = 0; y < H; y++) { const b = y * W; for (let x = 0; x < W; x++) { let v = 0; for (let k = Math.max(0, x - r); k <= Math.min(W - 1, x + r); k++) if (m[b + k] > v) v = m[b + k]; t[b + x] = v; } }
+  for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) { let v = 0; for (let k = Math.max(0, y - r); k <= Math.min(H - 1, y + r); k++) if (t[k * W + x] > v) v = t[k * W + x]; o[y * W + x] = v; }
+  return o;
+}
+function sideSupport(M, W, H, a, b, ref, n) {
+  // kenar boyunca gradyan gücü (M: ±2 px en-yüksek filtreli), ref'e göre 0..1
+  if (!n) n = Math.max(24, Math.round(dist(a, b) / 3));
+  let sum = 0;
+  for (let k = 0; k < n; k++) {
+    const t = 0.05 + 0.9 * k / (n - 1), x = Math.round(a[0] + (b[0] - a[0]) * t), y = Math.round(a[1] + (b[1] - a[1]) * t);
+    if (x >= 0 && y >= 0 && x < W && y < H) sum += Math.min(1, M[y * W + x] / ref);
+  }
+  return sum / n;
+}
+function quadScore(M, W, H, q, ref, n) {
+  const s = [0, 1, 2, 3].map(i => sideSupport(M, W, H, q[i], q[(i + 1) % 4], ref, n));
+  return 0.5 * (s[0] + s[1] + s[2] + s[3]) / 4 + 0.5 * Math.min(...s);
+}
+function magRef(mag) {
+  const samp = [], step = Math.max(1, Math.floor(mag.length / 30000));
+  for (let i = 0; i < mag.length; i += step) samp.push(mag[i]);
+  samp.sort((a, b) => a - b);
+  return Math.max(CONFIG.edgeMin * 4, samp[Math.floor(samp.length * 0.985)]);
+}
+function validQuad(q, W, H) {
+  const mx = 0.02 * W, my = 0.02 * H, md = Math.min(W, H);
+  if (q.some(p => p[0] < -mx || p[0] > W + mx || p[1] < -my || p[1] > H + my)) return false;
+  if (!isConvex(q)) return false;
+  const A = polyArea(q);
+  if (A < 0.06 * W * H || A > 0.985 * W * H) return false;
+  for (let i = 0; i < 4; i++) if (dist(q[i], q[(i + 1) % 4]) < 0.15 * md) return false;
+  // köşe açıları makul olsun (fotoğraf dikdörtgen; perspektifle en fazla ~35° sapma)
+  for (let i = 0; i < 4; i++) {
+    const a = q[(i + 3) % 4], b = q[i], c = q[(i + 1) % 4];
+    const v1 = [a[0] - b[0], a[1] - b[1]], v2 = [c[0] - b[0], c[1] - b[1]];
+    const cos = (v1[0] * v2[0] + v1[1] * v2[1]) / (Math.hypot(...v1) * Math.hypot(...v2));
+    if (Math.abs(cos) > Math.cos((90 - 35) * Math.PI / 180)) return false;
+  }
+  return true;
+}
+function houghQuads(lines, W, H) {
+  const pairs = [];
+  for (let i = 0; i < lines.length; i++) for (let j = i + 1; j < lines.length; j++) {
+    if (angDiff(lines[i].t, lines[j].t) > 16) continue;
+    if (Math.abs(lineDist(lines[i], lines[j])) < 0.15 * Math.min(W, H)) continue;
+    pairs.push([lines[i], lines[j]]);
+  }
+  const out = [];
+  for (let i = 0; i < pairs.length; i++) for (let j = i + 1; j < pairs.length; j++) {
+    const [a1, a2] = pairs[i], [b1, b2] = pairs[j], ad = angDiff(a1.t, b1.t);
+    if (ad < 55) continue;
+    const c = [intersect(a1, b1), intersect(a1, b2), intersect(a2, b2), intersect(a2, b1)];
+    if (c.some(p => !p)) continue;
+    const q = orderQuad(c);
+    if (validQuad(q, W, H)) out.push(q);
+  }
+  return out;
+}
+function refineQuad(q, mag, W, H) {
+  // her kenarı ±R piksel aralıkta en güçlü kenar çizgisine kaydır
+  const R = CONFIG.refineRange, lines = [];
+  for (let s = 0; s < 4; s++) {
+    const a = q[s], b = q[(s + 1) % 4], L = dist(a, b);
+    const nx = -(b[1] - a[1]) / L, ny = (b[0] - a[0]) / L, n = Math.max(20, Math.round(L / 4));
+    let best = -1, bp = [a, b];
+    for (let e1 = -R; e1 <= R; e1++) for (let e2 = -R; e2 <= R; e2++) {
+      const p = [a[0] + nx * e1, a[1] + ny * e1], r = [b[0] + nx * e2, b[1] + ny * e2];
+      let sum = 0;
+      for (let k = 0; k < n; k++) {
+        const t = 0.08 + 0.84 * k / (n - 1), x = Math.round(p[0] + (r[0] - p[0]) * t), y = Math.round(p[1] + (r[1] - p[1]) * t);
+        if (x > 0 && y > 0 && x < W - 1 && y < H - 1) sum += mag[y * W + x];
+      }
+      if (sum > best) { best = sum; bp = [p, r]; }
+    }
+    lines.push(bp);
+  }
+  const X = (l1, l2) => {
+    const [p1, p2] = l1, [p3, p4] = l2;
+    const d = (p1[0] - p2[0]) * (p3[1] - p4[1]) - (p1[1] - p2[1]) * (p3[0] - p4[0]);
+    if (Math.abs(d) < 1e-9) return null;
+    const u = ((p1[0] - p3[0]) * (p3[1] - p4[1]) - (p1[1] - p3[1]) * (p3[0] - p4[0])) / d;
+    return [p1[0] + u * (p2[0] - p1[0]), p1[1] + u * (p2[1] - p1[1])];
+  };
+  const r = [X(lines[3], lines[0]), X(lines[0], lines[1]), X(lines[1], lines[2]), X(lines[2], lines[3])];
+  if (r.some(p => !p)) return q;
+  return validQuad(r, W, H) ? r : q;
+}
+function bgModel(d, W, H) {
+  // fotoğraf karesinin kenar şeridinden zemin rengi ve bu rengin doğal dağılımı
+  const band = Math.max(2, Math.round(Math.min(W, H) * 0.03));
+  const hr = new Uint32Array(256), hg = new Uint32Array(256), hb = new Uint32Array(256), idx = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (x < band || x >= W - band || y < band || y >= H - band) { const i = (y * W + x) * 4; hr[d[i]]++; hg[d[i + 1]]++; hb[d[i + 2]]++; idx.push(i); }
+  }
+  const cnt = idx.length, med = h => { let a = 0; for (let v = 0; v < 256; v++) { a += h[v]; if (a >= cnt / 2) return v; } return 255; };
+  const r = med(hr), g = med(hg), b = med(hb), ds = [];
+  for (let k = 0; k < idx.length; k += 7) { const i = idx[k]; ds.push(Math.hypot(d[i] - r, d[i + 1] - g, d[i + 2] - b)); }
+  ds.sort((a, c) => a - c);
+  return { r, g, b, tol: Math.max(22, ds[Math.floor(ds.length * 0.8)] * 1.6) };
+}
+function outsideBg(d, W, H, q, bg) {
+  // kenarların hemen dışı zemine benziyor mu? (fotoğraf içindeki çizgileri eler)
+  const cx = q.reduce((s, p) => s + p[0], 0) / 4, cy = q.reduce((s, p) => s + p[1], 0) / 4, off = Math.max(5, Math.round(Math.min(W, H) * 0.008));
+  const fr = [];
+  for (let s = 0; s < 4; s++) {
+    const a = q[s], b = q[(s + 1) % 4], L = dist(a, b);
+    let nx = -(b[1] - a[1]) / L, ny = (b[0] - a[0]) / L;
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    if (nx * (mx - cx) + ny * (my - cy) < 0) { nx = -nx; ny = -ny; }
+    let ok = 0, tot = 0;
+    for (let k = 0; k < 24; k++) {
+      const t = 0.1 + 0.8 * k / 23, px = a[0] + (b[0] - a[0]) * t, py = a[1] + (b[1] - a[1]) * t;
+      let best = Infinity, inside = false;
+      for (const o of [off, off * 2, off * 3]) {
+        const x = Math.round(px + nx * o), y = Math.round(py + ny * o);
+        if (x < 0 || y < 0 || x >= W || y >= H) continue;
+        inside = true;
+        const i = (y * W + x) * 4;
+        best = Math.min(best, Math.hypot(d[i] - bg.r, d[i + 1] - bg.g, d[i + 2] - bg.b));
+      }
+      if (!inside) continue;
+      tot++; if (best <= bg.tol) ok++;
+    }
+    fr.push(tot ? ok / tot : 0.5);
+  }
+  return 0.5 * (fr[0] + fr[1] + fr[2] + fr[3]) / 4 + 0.5 * Math.min(...fr);
+}
+function maskQuad(d, W, H) {
+  const N = W * H, band = Math.max(2, Math.round(Math.min(W, H) * 0.03));
+  const hr = new Uint32Array(256), hg = new Uint32Array(256), hb = new Uint32Array(256);
+  let cnt = 0;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (x < band || x >= W - band || y < band || y >= H - band) { const i = (y * W + x) * 4; hr[d[i]]++; hg[d[i + 1]]++; hb[d[i + 2]]++; cnt++; }
+  }
+  const med = h => { let a = 0; for (let v = 0; v < 256; v++) { a += h[v]; if (a >= cnt / 2) return v; } return 255; };
+  const br = med(hr), bgc = med(hg), bb = med(hb);
+  let diff = new Float32Array(N);
+  for (let i = 0, j = 0; i < N; i++, j += 4) {
+    const a = d[j] - br, b = d[j + 1] - bgc, c = d[j + 2] - bb;
+    diff[i] = Math.sqrt(a * a + b * b + c * c);
+  }
+  diff = boxBlur(diff, W, H, 2);
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < N; i++) hist[Math.min(255, diff[i] | 0)]++;
+  const t = otsu(hist, N);
+  if (t < CONFIG.minContrast) return null;
+  let mask = new Uint8Array(N);
+  for (let i = 0; i < N; i++) mask[i] = diff[i] > t ? 1 : 0;
+  const r = Math.max(2, Math.round(Math.min(W, H) * 0.006));
+  mask = morph(morph(mask, W, H, r, true), W, H, r, false);
+  mask = morph(morph(mask, W, H, r, false), W, H, r, true);
+  const lab = new Int32Array(N), stack = new Int32Array(N);
+  let cur = 0, best = 0, bestA = 0;
+  for (let i = 0; i < N; i++) {
+    if (!mask[i] || lab[i]) continue;
+    cur++; let sp = 0, area = 0; stack[sp++] = i; lab[i] = cur;
+    while (sp) {
+      const p = stack[--sp]; area++;
+      const x = p % W;
+      if (x > 0 && mask[p - 1] && !lab[p - 1]) { lab[p - 1] = cur; stack[sp++] = p - 1; }
+      if (x < W - 1 && mask[p + 1] && !lab[p + 1]) { lab[p + 1] = cur; stack[sp++] = p + 1; }
+      if (p >= W && mask[p - W] && !lab[p - W]) { lab[p - W] = cur; stack[sp++] = p - W; }
+      if (p < N - W && mask[p + W] && !lab[p + W]) { lab[p + W] = cur; stack[sp++] = p + W; }
+    }
+    if (area > bestA) { bestA = area; best = cur; }
+  }
+  if (bestA < 0.06 * N || bestA > 0.985 * N) return null;
+  const pts = [];
+  for (let y = 0; y < H; y++) {
+    let mn = -1, mx = -1;
+    for (let x = 0; x < W; x++) if (lab[y * W + x] === best) { if (mn < 0) mn = x; mx = x; }
+    if (mn >= 0) { pts.push([mn, y]); if (mx !== mn) pts.push([mx + 1, y]); }
+  }
+  const hull = convexHull(pts);
+  if (hull.length < 4) return null;
+  const q = bestQuad(hull);
+  return validQuad(q, W, H) ? q : null;
+}
+function detectQuad(src) {
+  const small = fitCanvas(src, CONFIG.detectSize);
+  const W = small.width, H = small.height;
+  const d = getData(small).data; free(small);
+  const g = gradients(d, W, H), e = edgeMap(g, W, H);
+  const ref = magRef(g.mag), bg = bgModel(d, W, H), raw = [];
+  const mq = maskQuad(d, W, H);
+  if (mq) raw.push({ q: mq, src: "mask" });
+  for (const q of houghQuads(houghLines(e, g, W, H), W, H)) raw.push({ q, src: "line" });
+  if (!raw.length) return FALLBACK();
+  const M2 = maxFilter(g.mag, W, H, 2);
+  const rate = c => quadScore(M2, W, H, c.q, ref) * (0.3 + 0.7 * outsideBg(d, W, H, c.q, bg));
+  // 1. aşama: hızlı eleme (kenar başına 12 örnek), 2. aşama: tam puan
+  raw.forEach(c => { c.p = quadScore(M2, W, H, c.q, ref, 12); });
+  raw.sort((a, b) => b.p - a.p);
+  raw.length = Math.min(raw.length, CONFIG.preTop);
+  if (mq && !raw.some(c => c.src === "mask")) raw.push({ q: mq, src: "mask" });
+  raw.forEach(c => { c.s = rate(c); });
+  raw.sort((a, b) => b.s - a.s);
+  const cands = raw.slice(0, CONFIG.refineTop).map(c => { const r = { q: refineQuad(c.q, g.mag, W, H), src: c.src }; r.s = rate(r); return r; });
+  const top = Math.max(...cands.map(c => c.s));
+  if (top < CONFIG.minSupport) return FALLBACK();
+  // puanı en iyiye çok yakın olanlar arasından en büyüğü: beyaz çerçeveli fotoğrafta dış kenarı seçer
+  const pool = cands.filter(c => c.s >= top * (1 - CONFIG.supportSlack));
+  pool.sort((a, b) => polyArea(b.q) - polyArea(a.q));
+  const q = pool[0].q;
+  const minSide = Math.min(...[0, 1, 2, 3].map(i => sideSupport(M2, W, H, q[i], q[(i + 1) % 4], ref)));
+  const cx = q.reduce((s, p) => s + p[0], 0) / 4, cy = q.reduce((s, p) => s + p[1], 0) / 4;
+  const quad = q.map(p => [clamp((p[0] + (cx - p[0]) * CONFIG.inset) / W, 0, 1), clamp((p[1] + (cy - p[1]) * CONFIG.inset) / H, 0, 1)]);
+  // bir kenar zayıfsa kullanıcıya "kontrol et" uyarısı göster
+  return { quad, found: minSide >= CONFIG.sureSide };
+}
+
+/* ---------- Perspektif düzeltme ---------- */
+function warpInto(sd, q, out) {
+  const ow = out.width, oh = out.height, sw = sd.width, sh = sd.height, s = sd.data, o = out.data;
+  const h = homography([[0, 0], [ow, 0], [ow, oh], [0, oh]], q);
+  let j = 0;
+  for (let v = 0; v < oh; v++) {
+    const vv = v + 0.5;
+    for (let u = 0; u < ow; u++, j += 4) {
+      const uu = u + 0.5, den = h[6] * uu + h[7] * vv + 1;
+      let x = (h[0] * uu + h[1] * vv + h[2]) / den - 0.5, y = (h[3] * uu + h[4] * vv + h[5]) / den - 0.5;
+      x = clamp(x, 0, sw - 1.001); y = clamp(y, 0, sh - 1.001);
+      const x0 = x | 0, y0 = y | 0, fx = x - x0, fy = y - y0;
+      const i00 = (y0 * sw + x0) * 4, i01 = i00 + 4, i10 = i00 + sw * 4, i11 = i10 + 4;
+      for (let c = 0; c < 3; c++) {
+        const a = s[i00 + c] + (s[i01 + c] - s[i00 + c]) * fx, b = s[i10 + c] + (s[i11 + c] - s[i10 + c]) * fx;
+        o[j + c] = a + (b - a) * fy;
+      }
+      o[j + 3] = 255;
+    }
+  }
+}
+
+/* ---------- Renk sınıflandırma ve iyileştirme ---------- */
+function classify(img) {
+  const d = img.data, n = img.width * img.height, step = Math.max(1, Math.floor(n / 40000));
+  let c = 0, sa = 0, sb = 0, saa = 0, sbb = 0;
+  for (let i = 0; i < n; i += step) {
+    const j = i * 4, R = d[j], G = d[j + 1], B = d[j + 2], Y = 0.299 * R + 0.587 * G + 0.114 * B;
+    if (Y < 30 || Y > 235) continue;
+    const a = (R - Y) / (Y + 20), b = (B - Y) / (Y + 20);
+    sa += a; sb += b; saa += a * a; sbb += b * b; c++;
+  }
+  if (c < 100) return "bw";
+  const va = saa / c - (sa / c) ** 2, vb = sbb / c - (sb / c) ** 2;
+  return Math.sqrt(Math.max(0, va) + Math.max(0, vb)) < CONFIG.bwThreshold ? "bw" : "color";
+}
+function luma(d, n) {
+  const Y = new Uint8ClampedArray(n);
+  for (let i = 0, j = 0; i < n; i++, j += 4) Y[i] = (d[j] * 77 + d[j + 1] * 150 + d[j + 2] * 29) >> 8;
+  return Y;
+}
+function percentiles(Y, clip) {
+  const h = new Uint32Array(256); for (let i = 0; i < Y.length; i++) h[Y[i]]++;
+  const lim = Y.length * clip; let lo = 0, hi = 255, a = 0;
+  for (let v = 0; v < 256; v++) { a += h[v]; if (a > lim) { lo = v; break; } }
+  a = 0;
+  for (let v = 255; v >= 0; v--) { a += h[v]; if (a > lim) { hi = v; break; } }
+  return [lo, hi];
+}
+function clahe(Y, W, H, clip, T) {
+  const tx = Math.max(1, Math.min(T, W >> 5)), ty = Math.max(1, Math.min(T, H >> 5));
+  const tw = W / tx, th = H / ty, luts = new Uint8Array(tx * ty * 256), h = new Uint32Array(256);
+  for (let j = 0; j < ty; j++) for (let i = 0; i < tx; i++) {
+    h.fill(0);
+    const x0 = Math.floor(i * tw), x1 = Math.floor((i + 1) * tw), y0 = Math.floor(j * th), y1 = Math.floor((j + 1) * th);
+    for (let y = y0; y < y1; y++) { const b = y * W; for (let x = x0; x < x1; x++) h[Y[b + x]]++; }
+    const cnt = Math.max(1, (x1 - x0) * (y1 - y0)), lim = Math.max(1, Math.floor(clip * cnt / 256));
+    let ex = 0;
+    for (let v = 0; v < 256; v++) if (h[v] > lim) { ex += h[v] - lim; h[v] = lim; }
+    const add = Math.floor(ex / 256), rem = ex - add * 256;
+    for (let v = 0; v < 256; v++) h[v] += add + (v < rem ? 1 : 0);
+    let a = 0; const base = (j * tx + i) * 256;
+    for (let v = 0; v < 256; v++) { a += h[v]; luts[base + v] = Math.min(255, Math.round(a * 255 / cnt)); }
+  }
+  const axis = (len, n, sz) => {
+    const A = new Int32Array(len), B = new Int32Array(len), F = new Float32Array(len);
+    for (let x = 0; x < len; x++) {
+      const g = (x + 0.5) / sz - 0.5; let a = Math.floor(g), f = g - a;
+      if (a < 0) { a = 0; f = 0; }
+      let b = a + 1;
+      if (b > n - 1) { b = n - 1; if (a >= n - 1) { a = n - 1; f = 0; } }
+      A[x] = a; B[x] = b; F[x] = f;
+    }
+    return [A, B, F];
+  };
+  const [xa, xb, xf] = axis(W, tx, tw), [ya, yb, yf] = axis(H, ty, th);
+  const out = new Uint8ClampedArray(W * H);
+  for (let y = 0; y < H; y++) {
+    const ra = ya[y] * tx, rb = yb[y] * tx, fy = yf[y], row = y * W;
+    for (let x = 0; x < W; x++) {
+      const v = Y[row + x], fx = xf[x];
+      const l00 = luts[(ra + xa[x]) * 256 + v], l01 = luts[(ra + xb[x]) * 256 + v];
+      const l10 = luts[(rb + xa[x]) * 256 + v], l11 = luts[(rb + xb[x]) * 256 + v];
+      const top = l00 + (l01 - l00) * fx, bot = l10 + (l11 - l10) * fx;
+      out[row + x] = top + (bot - top) * fy;
+    }
+  }
+  return out;
+}
+function softBlur(Y, W, H) { return boxBlur(boxBlur(Y, W, H, 1), W, H, 1); }
+function enhance(img, st, kind) {
+  const d = img.data, W = img.width, H = img.height, n = W * H;
+  const mode = st.mode === "auto" ? kind : st.mode;
+  const t = st.strength / 100;
+  if (mode !== "orig" && t > 0) {
+    const o = new Uint8ClampedArray(d);
+    if (mode === "bw") {
+      let Y = luma(d, n);
+      const [lo, hi] = percentiles(Y, CONFIG.levelsClip);
+      if (hi - lo > 12) { const k = 255 / (hi - lo); for (let i = 0; i < n; i++) Y[i] = (Y[i] - lo) * k; }
+      Y = clahe(Y, W, H, CONFIG.claheBW, CONFIG.claheTiles);
+      const bl = softBlur(Y, W, H), a = CONFIG.sharpen;
+      for (let i = 0, j = 0; i < n; i++, j += 4) {
+        const g = clamp(Y[i] + a * (Y[i] - bl[i]), 0, 255);
+        let r = g, gg = g, b = g;
+        if (st.warm) { const m = 4 * (g / 255) * (1 - g / 255); r = g + 16 * m; gg = g + 5 * m; b = g - 16 * m; }
+        d[j] = o[j] + (r - o[j]) * t; d[j + 1] = o[j + 1] + (gg - o[j + 1]) * t; d[j + 2] = o[j + 2] + (b - o[j + 2]) * t;
+      }
+    } else {
+      let mr = 0, mg = 0, mb = 0;
+      for (let j = 0; j < d.length; j += 4) { mr += d[j]; mg += d[j + 1]; mb += d[j + 2]; }
+      mr /= n; mg /= n; mb /= n;
+      const avg = (mr + mg + mb) / 3, w = CONFIG.wbMix;
+      const kr = 1 + (avg / Math.max(1, mr) - 1) * w, kg = 1 + (avg / Math.max(1, mg) - 1) * w, kb = 1 + (avg / Math.max(1, mb) - 1) * w;
+      for (let j = 0; j < d.length; j += 4) { d[j] *= kr; d[j + 1] *= kg; d[j + 2] *= kb; }
+      let Y = luma(d, n);
+      const [lo, hi] = percentiles(Y, CONFIG.levelsClip);
+      if (hi - lo > 12) {
+        const k = 255 / (hi - lo);
+        for (let j = 0; j < d.length; j += 4) { d[j] = (d[j] - lo) * k; d[j + 1] = (d[j + 1] - lo) * k; d[j + 2] = (d[j + 2] - lo) * k; }
+        Y = luma(d, n);
+      }
+      const Yc = clahe(Y, W, H, CONFIG.claheColor, CONFIG.claheTiles), bl = softBlur(Yc, W, H);
+      const sat = 1 + CONFIG.satBoost, a = CONFIG.sharpen;
+      for (let i = 0, j = 0; i < n; i++, j += 4) {
+        const y1 = Yc[i] + a * (Yc[i] - bl[i]);
+        const ratio = clamp((y1 + 1) / (Y[i] + 1), 0.4, 2.5);
+        let r = d[j] * ratio, g = d[j + 1] * ratio, b = d[j + 2] * ratio;
+        const yy = 0.299 * r + 0.587 * g + 0.114 * b;
+        r = yy + (r - yy) * sat; g = yy + (g - yy) * sat; b = yy + (b - yy) * sat;
+        d[j] = o[j] + (r - o[j]) * t; d[j + 1] = o[j + 1] + (g - o[j + 1]) * t; d[j + 2] = o[j + 2] + (b - o[j + 2]) * t;
+      }
+    }
+  }
+  if (st.bright || st.contrast) {
+    const f = 1 + st.contrast / 100, bo = st.bright * 1.2, lut = new Uint8ClampedArray(256);
+    for (let v = 0; v < 256; v++) lut[v] = (v - 128) * f + 128 + bo;
+    for (let j = 0; j < d.length; j += 4) { d[j] = lut[d[j]]; d[j + 1] = lut[d[j + 1]]; d[j + 2] = lut[d[j + 2]]; }
+  }
+}
+
+/* ---------- Çıktı üretimi ---------- */
+function renderOutput(sd, item, cap, override) {
+  const sw = sd.width, sh = sd.height;
+  const q = item.quad.map(p => [p[0] * sw, p[1] * sh]);
+  const sz = quadSize(q), s = Math.min(1, cap / Math.max(sz.w, sz.h));
+  const ow = Math.max(8, Math.round(sz.w * s)), oh = Math.max(8, Math.round(sz.h * s));
+  const out = new ImageData(ow, oh);
+  warpInto(sd, q, out);
+  if (!item.kind) item.kind = classify(out);
+  const st = Object.assign({}, item.st, override || {});
+  enhance(out, st, item.kind);
+  let c = document.createElement("canvas");
+  c.width = ow; c.height = oh;
+  c.getContext("2d").putImageData(out, 0, 0);
+  if (st.rot || st.flip) {
+    const r = document.createElement("canvas"), odd = st.rot % 2 === 1;
+    r.width = odd ? oh : ow; r.height = odd ? ow : oh;
+    const x = r.getContext("2d");
+    x.translate(r.width / 2, r.height / 2); x.rotate(st.rot * Math.PI / 2);
+    if (st.flip) x.scale(-1, 1);
+    x.drawImage(c, -ow / 2, -oh / 2);
+    free(c); c = r;
+  }
+  return c;
+}
+function outDims(item) {
+  const W = item.fullW, H = item.fullH;
+  const q = item.quad.map(p => [p[0] * W, p[1] * H]);
+  const sz = quadSize(q), s = Math.min(1, CONFIG.maxOut / Math.max(sz.w, sz.h));
+  let w = Math.round(sz.w * s), h = Math.round(sz.h * s);
+  if (item.st.rot % 2) [w, h] = [h, w];
+  return w + "×" + h;
+}
+
+/* ---------- Örnek fotoğraf ---------- */
+function makeSample() {
+  const W = 1600, H = 1200, bg = document.createElement("canvas");
+  bg.width = W; bg.height = H;
+  const x = bg.getContext("2d");
+  const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, "#2d2723"); g.addColorStop(1, "#1c1917");
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 220; i++) {
+    x.strokeStyle = `rgba(${70 + rnd() * 30 | 0},${55 + rnd() * 20 | 0},44,${0.06 + rnd() * 0.1})`;
+    x.lineWidth = 1 + rnd() * 3;
+    const y = rnd() * H;
+    x.beginPath(); x.moveTo(0, y); x.bezierCurveTo(W * 0.3, y + rnd() * 24 - 12, W * 0.7, y + rnd() * 24 - 12, W, y + rnd() * 10 - 5); x.stroke();
+  }
+  const pw = 900, ph = 680, p = document.createElement("canvas");
+  p.width = pw; p.height = ph;
+  const c = p.getContext("2d");
+  c.fillStyle = "#efe8d6"; c.fillRect(0, 0, pw, ph);
+  const m = 36, iw = pw - 2 * m, ih = ph - 2 * m;
+  c.save(); c.translate(m, m); c.beginPath(); c.rect(0, 0, iw, ih); c.clip();
+  const sky = c.createLinearGradient(0, 0, 0, ih * 0.6); sky.addColorStop(0, "#b9b4a8"); sky.addColorStop(1, "#dcd7ca");
+  c.fillStyle = sky; c.fillRect(0, 0, iw, ih);
+  c.fillStyle = "#9a9488"; c.beginPath(); c.moveTo(0, ih * 0.52);
+  for (let i = 0; i <= 12; i++) c.lineTo(iw * i / 12, ih * (0.46 + 0.06 * Math.sin(i * 1.3)));
+  c.lineTo(iw, ih); c.lineTo(0, ih); c.fill();
+  c.fillStyle = "#5f5a51"; c.beginPath(); c.moveTo(0, ih * 0.66);
+  c.quadraticCurveTo(iw * 0.4, ih * 0.58, iw, ih * 0.7); c.lineTo(iw, ih); c.lineTo(0, ih); c.fill();
+  c.fillStyle = "#8a8578"; c.beginPath(); c.moveTo(iw * 0.48, ih); c.lineTo(iw * 0.55, ih * 0.64); c.lineTo(iw * 0.58, ih * 0.64); c.lineTo(iw * 0.72, ih); c.fill();
+  c.fillStyle = "#d8d2c3"; c.fillRect(iw * 0.62, ih * 0.5, iw * 0.16, ih * 0.13);
+  c.fillStyle = "#3d3933"; c.beginPath(); c.moveTo(iw * 0.6, ih * 0.5); c.lineTo(iw * 0.7, ih * 0.41); c.lineTo(iw * 0.8, ih * 0.5); c.fill();
+  c.fillRect(iw * 0.66, ih * 0.55, iw * 0.025, ih * 0.035); c.fillRect(iw * 0.72, ih * 0.54, iw * 0.03, ih * 0.09);
+  c.fillStyle = "#2f2c27";
+  for (const [tx, s] of [[0.18, 1], [0.27, 0.8], [0.88, 0.9]]) {
+    c.fillRect(iw * tx - 4, ih * (0.66 - 0.1 * s), 8, ih * 0.12 * s);
+    c.beginPath(); c.ellipse(iw * tx, ih * (0.5 - 0.06 * s), iw * 0.035 * s, ih * 0.17 * s, 0, 0, Math.PI * 2); c.fill();
+  }
+  c.fillStyle = "#26231f";
+  for (const fx of [0.4, 0.43]) { c.beginPath(); c.arc(iw * fx, ih * 0.68, 7, 0, Math.PI * 2); c.fill(); c.fillRect(iw * fx - 7, ih * 0.69, 14, 46); }
+  c.restore();
+  const id = c.getImageData(0, 0, pw, ph), dd = id.data;
+  for (let y = 0; y < ph; y++) for (let xx = 0; xx < pw; xx++) {
+    const j = (y * pw + xx) * 4;
+    let Y = 0.299 * dd[j] + 0.587 * dd[j + 1] + 0.114 * dd[j + 2];
+    const inner = xx >= m && xx < pw - m && y >= m && y < ph - m;
+    if (inner) {
+      const vx = (xx - pw / 2) / (iw / 2), vy = (y - ph / 2) / (ih / 2);
+      Y = 78 + Y * 0.52 - 18 * (vx * vx + vy * vy) * 0.5;
+    }
+    Y += (rnd() - 0.5) * 10;
+    dd[j] = Y * 1.07 + 14; dd[j + 1] = Y * 0.98 + 6; dd[j + 2] = Y * 0.76;
+  }
+  c.putImageData(id, 0, 0);
+  c.strokeStyle = "rgba(240,232,214,.5)"; c.lineWidth = 1;
+  for (let i = 0; i < 6; i++) { c.beginPath(); const sx = m + rnd() * iw; c.moveTo(sx, m + rnd() * ih * 0.3); c.lineTo(sx + rnd() * 40 - 20, m + ih * (0.5 + rnd() * 0.5)); c.stroke(); }
+  const pdata = getData(p);
+  const quad = [[420, 165], [1255, 228], [1205, 1062], [372, 998]];
+  x.save(); x.shadowColor = "rgba(0,0,0,.55)"; x.shadowBlur = 34; x.shadowOffsetY = 10;
+  x.fillStyle = "#111"; x.beginPath(); quad.forEach((pt, i) => i ? x.lineTo(pt[0], pt[1]) : x.moveTo(pt[0], pt[1])); x.closePath(); x.fill(); x.restore();
+  const bd = getData(bg), b = bd.data, pd = pdata.data;
+  const hm = homography(quad, [[0, 0], [pw, 0], [pw, ph], [0, ph]]);
+  for (let y = 150; y < 1080; y++) for (let xx = 360; xx < 1270; xx++) {
+    const den = hm[6] * xx + hm[7] * y + 1, u = (hm[0] * xx + hm[1] * y + hm[2]) / den, v = (hm[3] * xx + hm[4] * y + hm[5]) / den;
+    if (u < 0 || v < 0 || u >= pw - 1 || v >= ph - 1) continue;
+    const si = ((v | 0) * pw + (u | 0)) * 4, di = (y * W + xx) * 4;
+    b[di] = pd[si]; b[di + 1] = pd[si + 1]; b[di + 2] = pd[si + 2];
+  }
+  x.putImageData(bd, 0, 0);
+  free(p);
+  return bg;
+}
+
+/* ---------- Durum ---------- */
+const state = { items: [], busy: false, dl: null, dlKnown: false };
+let uid = 0;
+const ed = { item: null, src: null, sd: null, out: null, outOrig: null, view: "result", drag: -1, off: [0, 0], fit: null, dirty: false, showOrig: false, raf: 0, delArm: false };
+
+try { const v = localStorage.getItem("albumPrefix"); if (v) $("#prefix").value = v; } catch (e) {}
+$("#prefix").addEventListener("input", e => { try { localStorage.setItem("albumPrefix", e.target.value); } catch (er) {} renderGrid(); });
+const prefix = () => ($("#prefix").value.trim().replace(/[^\p{L}\p{N}_-]+/gu, "_") || "foto");
+function fname(it) { return prefix() + "_" + pad3(state.items.indexOf(it) + 1) + ".jpg"; }
+
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 3200);
+}
+function busy(msg) { if (msg) { $("#busyText").textContent = msg; $("#busy").hidden = false; } else $("#busy").hidden = true; }
+
+/* ---------- Izgara ---------- */
+function cardHTML(it) {
+  const n = pad3(state.items.indexOf(it) + 1);
+  let inner;
+  if (it.status === "done") inner = `<img src="${it.thumb}" alt="Fotoğraf ${n}">`;
+  else if (it.status === "error") inner = `<div class="ph">Açılamadı<br>${it.err || ""}</div>`;
+  else if (it.status === "work") inner = `<div class="ph"><div class="spin"></div>İşleniyor</div>`;
+  else inner = `<div class="ph">Sırada</div>`;
+  const chips = [];
+  if (it.sample) chips.push(`<span class="chip sample">Örnek</span>`);
+  if (it.status === "done") {
+    chips.push(`<span class="chip">${(it.st.mode === "auto" ? it.kind : it.st.mode) === "bw" ? "SB" : it.st.mode === "orig" ? "Orijinal" : "Renkli"}</span>`);
+    if (!it.found && !it.manual) chips.push(`<span class="chip warn">Kenarı kontrol et</span>`);
+    else if (it.manual) chips.push(`<span class="chip">Elle</span>`);
+  }
+  const size = it.status === "done" ? `<span>${outDims(it)}</span>` : "";
+  return `<div class="mount">${inner}</div><div class="cap"><span class="no">${n}</span>${chips.join("")}${size}</div>`;
+}
+function renderCard(it) {
+  let el = document.querySelector(`[data-id="${it.id}"]`);
+  if (!el) {
+    el = document.createElement("button");
+    el.type = "button"; el.className = "card"; el.dataset.id = it.id;
+    el.addEventListener("click", () => { if (it.status === "done") openEditor(it); });
+    $("#grid").appendChild(el);
+  }
+  el.innerHTML = cardHTML(it);
+  el.setAttribute("aria-label", "Fotoğraf " + pad3(state.items.indexOf(it) + 1) + " düzenle");
+}
+function renderGrid() {
+  $("#grid").innerHTML = "";
+  state.items.forEach(renderCard);
+  updateStatus();
+}
+function updateStatus() {
+  const real = state.items.filter(i => !i.sample);
+  const done = state.items.filter(i => i.status === "done").length, total = state.items.length;
+  const st = $("#status");
+  if (state.busy) st.innerHTML = `<span>İşleniyor ${done}/${total}</span><span class="bar"><i style="width:${total ? done / total * 100 : 0}%"></i></span>`;
+  else if (!real.length) st.innerHTML = `<span>Örnek: koyu masada eğik çekilmiş, sararmış bir fotoğraf. Karta dokunup sonucu ve köşeleri gör.</span>`;
+  else st.innerHTML = `<span>${done} fotoğraf hazır${state.items.some(i => i.status === "done" && !i.found && !i.manual) ? " · işaretli olanların köşelerini kontrol et" : ""}</span>`;
+  $("#countNote").textContent = real.length ? `${real.length} fotoğraf` : "";
+  const ready = state.items.filter(i => i.status === "done").length;
+  $("#zipLabel").textContent = ready > 1 ? `Tümünü kaydet (${ready})` : "Tümünü kaydet";
+  $("#zipBtn").disabled = !ready || state.busy;
+}
+
+/* ---------- İçe aktarma ---------- */
+async function prepare(it, sourceEl) {
+  const [fw, fh] = dims(sourceEl);
+  const sc = Math.min(1, CONFIG.maxSource / Math.max(fw, fh));
+  it.fullW = Math.round(fw * sc); it.fullH = Math.round(fh * sc);
+  const pc = fitCanvas(sourceEl, CONFIG.previewSize);
+  const det = detectQuad(pc);
+  it.quad = det.quad; it.autoQuad = det.quad.map(p => p.slice()); it.found = det.found;
+  it.prevBlob = await canvasBlob(pc, 0.92);
+  const sd = getData(pc); free(pc);
+  await makeThumb(it, sd);
+}
+async function makeThumb(it, sd) {
+  const c = renderOutput(sd, it, CONFIG.thumbSize);
+  const b = await canvasBlob(c, 0.85); free(c);
+  if (it.thumb) URL.revokeObjectURL(it.thumb);
+  it.thumb = URL.createObjectURL(b);
+}
+async function addFiles(files) {
+  if (!files.length) return;
+  const sample = state.items.filter(i => i.sample);
+  sample.forEach(s => { if (s.thumb) URL.revokeObjectURL(s.thumb); });
+  state.items = state.items.filter(i => !i.sample);
+  for (const f of files) state.items.push({ id: ++uid, name: f.name, file: f, status: "wait", st: Object.assign({}, CONFIG.defaults), quad: null, kind: null });
+  $("#tips").open = false;
+  renderGrid();
+  processQueue();
+}
+async function processQueue() {
+  if (state.busy) return;
+  state.busy = true; updateStatus();
+  for (;;) {
+    const it = state.items.find(i => i.status === "wait");
+    if (!it) break;
+    it.status = "work"; renderCard(it); updateStatus();
+    await tick();
+    try {
+      const bm = await decodeFile(it.file);
+      await prepare(it, bm);
+      if (bm.close) bm.close();
+      it.status = "done";
+    } catch (e) { it.status = "error"; it.err = e.message || ""; }
+    renderCard(it); updateStatus();
+    await tick();
+  }
+  state.busy = false; updateStatus();
+}
+$("#pick").addEventListener("change", e => { const f = Array.from(e.target.files || []); e.target.value = ""; addFiles(f); });
+
+/* ---------- Dışa aktarma ---------- */
+async function exportItem(it) {
+  let src;
+  if (it.file) { const bm = await decodeFile(it.file); src = fitCanvas(bm, CONFIG.maxSource); if (bm.close) bm.close(); }
+  else src = await blobCanvas(it.fullBlob);
+  const sd = getData(src); free(src);
+  const c = renderOutput(sd, it, CONFIG.maxOut);
+  const b = await canvasBlob(c, CONFIG.jpegQuality); free(c);
+  return b;
+}
+/* Basit ZIP yazıcı (sıkıştırmasız; JPEG zaten sıkıştırılmış) */
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+async function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = [];
+  let off = 0;
+  const d = new Date(), dt = ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)) & 0xFFFF,
+    dd = (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF;
+  for (const f of files) {
+    const data = new Uint8Array(await f.arrayBuffer()), name = enc.encode(f.name), crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, dt, true); h.setUint16(12, dd, true); h.setUint32(14, crc, true);
+    h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    parts.push(h.buffer, name, data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, dt, true); c.setUint16(14, dd, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true);
+    c.setUint16(28, name.length, true); c.setUint32(42, off, true);
+    central.push(c.buffer, name);
+    off += 30 + name.length + data.length;
+  }
+  const csize = central.reduce((s, b) => s + b.byteLength, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+  e.setUint32(12, csize, true); e.setUint32(16, off, true);
+  return new Blob(parts.concat(central, [e.buffer]), { type: "application/zip" });
+}
+
+/* Kaydetme: iPhone paylaşım menüsü (Görüntüyü Kaydet) ya da indirme */
+const SHARE_CHUNK = 10;
+let prepared = [];
+function canShareFiles(files) {
+  try { return !!(navigator.canShare && navigator.share && navigator.canShare({ files })); } catch (e) { return false; }
+}
+function downloadBlob(blob, name) {
+  const a = document.createElement("a"), url = URL.createObjectURL(blob);
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+async function shareFiles(files, btn) {
+  if (canShareFiles(files)) {
+    try {
+      await navigator.share({ files });
+      if (btn) btn.classList.add("done");
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") { toast("Kaydetme iptal edildi."); return; }
+    }
+  }
+  for (const f of files) { downloadBlob(f, f.name); await new Promise(r => setTimeout(r, 350)); }
+  if (btn) btn.classList.add("done");
+  toast(files.length > 1 ? `${files.length} dosya indirildi.` : "İndirildi: " + files[0].name);
+}
+function openSheet(files) {
+  prepared = files;
+  const many = files.length > 1, canShare = canShareFiles(files.slice(0, 1));
+  $("#shTitle").textContent = many ? `${files.length} fotoğraf hazır` : "Fotoğraf hazır";
+  $("#shText").textContent = canShare
+    ? "Dokununca paylaşım menüsü açılır. Fotoğraflar'a eklemek için “Görüntüleri Kaydet”i seç."
+    : "Dokununca dosyalar cihazına indirilir.";
+  const g = $("#shGroups"); g.innerHTML = "";
+  for (let i = 0; i < files.length; i += SHARE_CHUNK) {
+    const chunk = files.slice(i, i + SHARE_CHUNK), b = document.createElement("button");
+    b.type = "button"; b.className = "btn primary";
+    b.textContent = !many ? "Kaydet" : files.length <= SHARE_CHUNK ? "Hepsini kaydet" : `Kaydet ${i + 1}–${i + chunk.length}`;
+    b.addEventListener("click", () => shareFiles(chunk, b));
+    g.appendChild(b);
+  }
+  $("#shZip").hidden = !many;
+  $("#sheet").hidden = false;
+}
+$("#shClose").addEventListener("click", () => { $("#sheet").hidden = true; prepared = []; });
+$("#shZip").addEventListener("click", async () => {
+  busy("ZIP paketleniyor…");
+  try { const z = await makeZip(prepared); busy(); downloadBlob(z, prefix() + "_arsiv.zip"); toast("ZIP indirildi. Dosyalar › İndirilenler klasörüne bak."); }
+  catch (e) { busy(); toast("ZIP hazırlanamadı: " + (e.message || "")); }
+});
+async function saveOne(it) {
+  busy("Tam çözünürlükte hazırlanıyor…");
+  try {
+    const blob = await exportItem(it);
+    busy();
+    openSheet([new File([blob], fname(it), { type: "image/jpeg" })]);
+  } catch (e) { busy(); toast("Fotoğraf hazırlanamadı: " + (e.message || "")); }
+}
+async function saveAll() {
+  const list = state.items.filter(i => i.status === "done");
+  const files = [];
+  try {
+    for (let k = 0; k < list.length; k++) {
+      busy(`Tam çözünürlükte hazırlanıyor ${k + 1}/${list.length}`);
+      await tick();
+      files.push(new File([await exportItem(list[k])], fname(list[k]), { type: "image/jpeg" }));
+    }
+    busy();
+    openSheet(files);
+  } catch (e) { busy(); toast("Hazırlanamadı: " + (e.message || "")); }
+}
+$("#zipBtn").addEventListener("click", saveAll);
+
+/* ---------- Düzenleyici ---------- */
+const stage = $("#stage"), loupe = $("#loupe");
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+async function openEditor(it) {
+  ed.item = it; ed.dirty = false; ed.delArm = false; ed.showOrig = false;
+  $("#edDel").textContent = "Sil";
+  $("#edTitle").textContent = fname(it);
+  $("#editor").hidden = false; document.body.style.overflow = "hidden";
+  ed.src = await blobCanvas(it.prevBlob); ed.sd = getData(ed.src);
+  setView(it.found || it.manual ? "result" : "corners");
+  syncControls(); renderResult();
+}
+async function closeEditor() {
+  const it = ed.item;
+  $("#editor").hidden = true; document.body.style.overflow = "";
+  if (it && ed.dirty) { await makeThumb(it, ed.sd); renderCard(it); updateStatus(); }
+  free(ed.src); free(ed.out); free(ed.outOrig);
+  ed.item = ed.src = ed.sd = ed.out = ed.outOrig = null;
+}
+function syncControls() {
+  const st = ed.item.st;
+  document.querySelectorAll("#modeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === st.mode)));
+  $("#kindOut").textContent = "Algılanan: " + (ed.item.kind === "bw" ? "siyah-beyaz" : "renkli");
+  $("#sStr").value = st.strength; $("#oStr").textContent = st.strength;
+  $("#sBri").value = st.bright; $("#oBri").textContent = st.bright;
+  $("#sCon").value = st.contrast; $("#oCon").textContent = st.contrast;
+  $("#cWarm").checked = !!st.warm;
+  const effBW = (st.mode === "auto" ? ed.item.kind : st.mode) === "bw";
+  $("#cWarm").disabled = !effBW;
+}
+function setView(v) {
+  ed.view = v;
+  $("#vCorners").setAttribute("aria-pressed", String(v === "corners"));
+  $("#vResult").setAttribute("aria-pressed", String(v === "result"));
+  $("#hint").textContent = v === "corners" ? "Köşeleri sürükleyerek fotoğrafın kenarına oturt" : "Orijinali görmek için basılı tut";
+  draw();
+}
+function renderResult(quadChanged) {
+  cancelAnimationFrame(ed.raf);
+  ed.raf = requestAnimationFrame(() => {
+    if (!ed.item) return;
+    free(ed.out); ed.out = renderOutput(ed.sd, ed.item, 1400);
+    if (quadChanged || !ed.outOrig) { free(ed.outOrig); ed.outOrig = null; }
+    syncControls(); draw();
+  });
+}
+function fitRect(w, h, cw, ch, padd) {
+  const k = Math.min((cw - padd * 2) / w, (ch - padd * 2) / h);
+  return { k, ox: (cw - w * k) / 2, oy: (ch - h * k) / 2, w: w * k, h: h * k };
+}
+function draw() {
+  if (!ed.item || !ed.src) return;
+  const box = $("#stagewrap").getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  const cw = box.width, ch = box.height;
+  if (stage.width !== Math.round(cw * dpr) || stage.height !== Math.round(ch * dpr)) { stage.width = Math.round(cw * dpr); stage.height = Math.round(ch * dpr); }
+  const x = stage.getContext("2d");
+  x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  x.clearRect(0, 0, cw, ch);
+  if (ed.view === "corners") {
+    const s = ed.src, f = fitRect(s.width, s.height, cw, ch, 28);
+    ed.fit = f;
+    x.drawImage(s, f.ox, f.oy, f.w, f.h);
+    const pts = ed.item.quad.map(p => [f.ox + p[0] * f.w, f.oy + p[1] * f.h]);
+    x.save(); x.beginPath(); x.rect(f.ox, f.oy, f.w, f.h);
+    x.moveTo(pts[0][0], pts[0][1]); for (let i = 3; i >= 1; i--) x.lineTo(pts[i][0], pts[i][1]); x.closePath();
+    x.fillStyle = "rgba(0,0,0,.5)"; x.fill("evenodd"); x.restore();
+    const ac = cssVar("--accent") || "#5CC3A4";
+    x.strokeStyle = ac; x.lineWidth = 2;
+    x.beginPath(); pts.forEach((p, i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1])); x.closePath(); x.stroke();
+    pts.forEach((p, i) => {
+      x.beginPath(); x.arc(p[0], p[1], ed.drag === i ? 15 : 12, 0, Math.PI * 2);
+      x.fillStyle = "rgba(255,255,255,.95)"; x.fill(); x.lineWidth = 3; x.strokeStyle = ac; x.stroke();
+    });
+  } else {
+    const o = ed.showOrig ? origCanvas() : ed.out;
+    if (!o) return;
+    const f = fitRect(o.width, o.height, cw, ch, 16);
+    x.drawImage(o, f.ox, f.oy, f.w, f.h);
+    if (ed.showOrig) { x.fillStyle = "rgba(0,0,0,.6)"; x.fillRect(12, 12, 78, 26); x.fillStyle = "#fff"; x.font = "500 12px " + cssVar("--f-mono"); x.fillText("ORİJİNAL", 20, 30); }
+  }
+}
+function origCanvas() {
+  if (!ed.outOrig) ed.outOrig = renderOutput(ed.sd, ed.item, 1400, { mode: "orig", bright: 0, contrast: 0 });
+  return ed.outOrig;
+}
+function local(e) { const r = stage.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+stage.addEventListener("pointerdown", e => {
+  if (!ed.item) return;
+  if (ed.view === "result") { ed.showOrig = true; stage.setPointerCapture(e.pointerId); draw(); return; }
+  const [px, py] = local(e), f = ed.fit;
+  let bi = -1, bd = 48;
+  ed.item.quad.forEach((p, i) => { const d = Math.hypot(f.ox + p[0] * f.w - px, f.oy + p[1] * f.h - py); if (d < bd) { bd = d; bi = i; } });
+  if (bi < 0) return;
+  ed.drag = bi;
+  const hp = ed.item.quad[bi];
+  ed.off = [f.ox + hp[0] * f.w - px, f.oy + hp[1] * f.h - py];
+  stage.setPointerCapture(e.pointerId);
+  loupe.hidden = false; drawLoupe(); draw();
+  e.preventDefault();
+});
+stage.addEventListener("pointermove", e => {
+  if (ed.drag < 0 || ed.view !== "corners") return;
+  const [px, py] = local(e), f = ed.fit;
+  ed.item.quad[ed.drag] = [clamp((px + ed.off[0] - f.ox) / f.w, 0, 1), clamp((py + ed.off[1] - f.oy) / f.h, 0, 1)];
+  draw(); drawLoupe();
+});
+function endPointer() {
+  if (ed.showOrig) { ed.showOrig = false; draw(); }
+  if (ed.drag >= 0) {
+    ed.drag = -1; loupe.hidden = true;
+    ed.item.manual = true; ed.dirty = true;
+    renderResult(true); draw();
+  }
+}
+stage.addEventListener("pointerup", endPointer);
+stage.addEventListener("pointercancel", endPointer);
+function drawLoupe() {
+  const f = ed.fit, p = ed.item.quad[ed.drag], s = ed.src;
+  const hx = f.ox + p[0] * f.w, box = $("#stagewrap").getBoundingClientRect();
+  loupe.style.left = (hx < box.width / 2 ? box.width - 132 : 12) + "px";
+  const x = loupe.getContext("2d"), L = loupe.width, span = 60;
+  const sx = p[0] * s.width, sy = p[1] * s.height;
+  x.fillStyle = "#000"; x.fillRect(0, 0, L, L);
+  x.imageSmoothingEnabled = true;
+  x.drawImage(s, sx - span / 2, sy - span / 2, span, span, 0, 0, L, L);
+  x.strokeStyle = cssVar("--accent") || "#5CC3A4"; x.lineWidth = 3;
+  x.beginPath(); x.moveTo(L / 2, 0); x.lineTo(L / 2, L); x.moveTo(0, L / 2); x.lineTo(L, L / 2); x.stroke();
+}
+window.addEventListener("resize", () => { if (ed.item) draw(); });
+
+$("#edBack").addEventListener("click", closeEditor);
+$("#vCorners").addEventListener("click", () => setView("corners"));
+$("#vResult").addEventListener("click", () => setView("result"));
+document.querySelectorAll("#modeSeg button").forEach(b => b.addEventListener("click", () => { ed.item.st.mode = b.dataset.mode; ed.dirty = true; syncControls(); renderResult(); }));
+const slider = (id, out, key) => $(id).addEventListener("input", e => { ed.item.st[key] = +e.target.value; $(out).textContent = e.target.value; ed.dirty = true; renderResult(); });
+slider("#sStr", "#oStr", "strength"); slider("#sBri", "#oBri", "bright"); slider("#sCon", "#oCon", "contrast");
+$("#cWarm").addEventListener("change", e => { ed.item.st.warm = e.target.checked; ed.dirty = true; renderResult(); });
+$("#bRot").addEventListener("click", () => { ed.item.st.rot = (ed.item.st.rot + 1) % 4; ed.dirty = true; renderResult(true); if (ed.view === "corners") setView("result"); });
+$("#bFlip").addEventListener("click", () => { ed.item.st.flip = !ed.item.st.flip; ed.dirty = true; renderResult(true); if (ed.view === "corners") setView("result"); });
+$("#bReset").addEventListener("click", () => { ed.item.quad = ed.item.autoQuad.map(p => p.slice()); ed.item.manual = false; ed.dirty = true; renderResult(true); draw(); toast(ed.item.found ? "Otomatik köşelere dönüldü." : "Otomatik kenar bulunamamıştı, köşeleri elle ayarla."); });
+$("#bAll").addEventListener("click", async () => {
+  const s = ed.item.st, keys = ["mode", "strength", "bright", "contrast", "warm"];
+  const others = state.items.filter(i => i !== ed.item && i.status === "done");
+  if (!others.length) { toast("Uygulanacak başka fotoğraf yok."); return; }
+  busy("Ayarlar uygulanıyor…");
+  for (const it of others) {
+    keys.forEach(k => { it.st[k] = s[k]; });
+    const c = await blobCanvas(it.prevBlob); const sd = getData(c); free(c);
+    await makeThumb(it, sd); renderCard(it); await tick();
+  }
+  busy(); toast(`Ayarlar ${others.length} fotoğrafa uygulandı.`);
+});
+$("#bSave").addEventListener("click", () => saveOne(ed.item));
+$("#edDel").addEventListener("click", () => {
+  if (!ed.delArm) { ed.delArm = true; $("#edDel").textContent = "Silmek için tekrar dokun"; return; }
+  const it = ed.item;
+  ed.dirty = false;
+  closeEditor();
+  if (it.thumb) URL.revokeObjectURL(it.thumb);
+  state.items = state.items.filter(i => i !== it);
+  renderGrid();
+});
+
+/* ---------- Başlangıç ---------- */
+(async function init() {
+  const it = { id: ++uid, name: "ornek.jpg", sample: true, status: "work", st: Object.assign({}, CONFIG.defaults), quad: null, kind: null };
+  state.items.push(it); renderGrid();
+  await tick();
+  try {
+    const sc = makeSample();
+    it.fullBlob = await canvasBlob(sc, 0.92);
+    await prepare(it, sc); free(sc);
+    it.status = "done";
+  } catch (e) { it.status = "error"; it.err = e.message || ""; }
+  renderCard(it); updateStatus();
+})();
+
+</script>
+</body>
+</html>
